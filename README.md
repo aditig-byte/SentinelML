@@ -92,7 +92,7 @@ Prometheus and Grafana are separate services and must be installed or downloaded
 ### 1. Clone the repository
 
 ```powershell
-git clone <YOUR_GITHUB_REPOSITORY_URL>
+git clone <https://github.com/aditig-byte/SentinelML>
 cd SentinelML
 ```
 
