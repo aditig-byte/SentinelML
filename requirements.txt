@@ -1,0 +1,22 @@
+﻿# API and serving
+fastapi
+uvicorn[standard]
+pydantic
+
+# Machine learning and data processing
+numpy
+pandas
+scikit-learn
+joblib
+scipy
+
+# Monitoring and traffic generation
+prometheus-client
+requests
+
+# Training visualizations
+matplotlib
+seaborn
+
+# Automated tests
+pytest

@@ -1,0 +1,39 @@
+﻿# Python virtual environments
+.venv/
+venv/
+env/
+
+# Python cache and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Generated datasets
+data/raw/*
+data/processed/*
+data/reference/*
+
+# Generated model artifacts
+models/*.joblib
+models/*.pkl
+models/*.json
+
+# Runtime logs
+logs/*
+*.log
+
+# Local monitoring data
+prometheus_data/
+grafana_data/
+
+# Editor and operating-system files
+.vscode/
+.DS_Store
+Thumbs.db
