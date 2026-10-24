@@ -1,6 +1,6 @@
 ﻿# SentinelML — Model Monitoring & Drift Detection
 
-SentinelML is a machine-learning monitoring project that serves synthetic transaction fraud predictions through FastAPI, records inference events, detects changes in input and prediction distributions, and exposes monitoring metrics to Prometheus and Grafana.
+SentinelML is a machine-learning monitoring project that serves synthetic transaction fraud predictions through FastAPI, records inference events, detects changes in input and prediction distributions, and exposes monitoring metrics to Prometheus and Streamlit.
 
 The project demonstrates how an ML model can be monitored after deployment rather than treated as a one-time training exercise.
 
@@ -12,7 +12,7 @@ The project demonstrates how an ML model can be monitored after deployment rathe
 - JSONL-based inference event logging.
 - Periodic data drift and prediction drift analysis.
 - Statistical comparisons using the Kolmogorov–Smirnov (KS) test and Population Stability Index (PSI).
-- Prometheus metrics and a Grafana monitoring dashboard.
+- Prometheus metrics and a Streamlit monitoring dashboard.
 - Baseline and deliberately shifted synthetic traffic for testing drift detection.
 - Automated tests for drift calculations and insufficient-data handling.
 
@@ -32,7 +32,7 @@ flowchart TD
     D --> J[Prometheus Metrics Endpoint]
     H --> J
     J --> K[Prometheus]
-    K --> L[Grafana Dashboard]
+    K --> L[Streamlit Dashboard]
 ```
 
 ## Technology Stack
@@ -47,7 +47,7 @@ flowchart TD
 | Event logging | JSON Lines (JSONL) |
 | Metrics instrumentation | prometheus-client |
 | Metrics collection | Prometheus |
-| Visualization | Grafana |
+| Visualization | Streamlit |
 | Testing | pytest |
 
 ## Project Structure
@@ -83,9 +83,9 @@ Generated datasets, trained model files, and runtime logs are intentionally excl
 - Python 3.12 or a compatible Python version
 - Git
 - Prometheus for Windows
-- Grafana for Windows
+- Streamlit for Windows
 
-Prometheus and Grafana are separate services and must be installed or downloaded separately.
+Prometheus and Streamlit are separate services and must be installed or downloaded separately.
 
 ## Setup
 
@@ -275,13 +275,13 @@ Useful metrics include:
 
 The status gauges use `-1` for unknown or insufficient data, `0` for OK/no drift, `1` for warning, and `2` for detected drift.
 
-## Grafana Dashboard
+## Streamlit Dashboard
 
-Start Grafana using the executable from your Windows installation and open:
+Start Streamlit using the executable from your Windows installation and open:
 
 `http://localhost:3000`
 
-Configure Prometheus as the data source, using `http://localhost:9090` when Grafana and Prometheus run on the same machine.
+Configure Prometheus as the data source, using `http://localhost:9090` when Streamlit and Prometheus run on the same machine.
 
 The SentinelML dashboard is designed around eight monitoring panels:
 
@@ -294,7 +294,7 @@ The SentinelML dashboard is designed around eight monitoring panels:
 7. Overall Drift Status
 8. Prediction Drift Status
 
-Dashboard configuration may need to be imported or recreated on a fresh installation. The Grafana dashboard is not automatically provisioned by the current repository.
+Dashboard configuration may need to be imported or recreated on a fresh installation. The Streamlit dashboard is not automatically provisioned by the current repository.
 
 ## Automated Tests
 
