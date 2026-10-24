@@ -1,6 +1,6 @@
-﻿# SentinelML — Model Monitoring & Drift Detection
+# SentinelML — Model Monitoring & Drift Detection
 
-SentinelML is a machine-learning monitoring project that serves synthetic transaction fraud predictions through FastAPI, records inference events, detects changes in input and prediction distributions, and exposes monitoring metrics to Prometheus and Streamlit.
+SentinelML is a machine-learning monitoring project that serves synthetic transaction fraud predictions through FastAPI, records inference events, detects changes in input and prediction distributions, and exposes monitoring metrics to Prometheus through an interactive Streamlit dashboard.
 
 The project demonstrates how an ML model can be monitored after deployment rather than treated as a one-time training exercise.
 
@@ -12,9 +12,9 @@ The project demonstrates how an ML model can be monitored after deployment rathe
 - JSONL-based inference event logging.
 - Periodic data drift and prediction drift analysis.
 - Statistical comparisons using the Kolmogorov–Smirnov (KS) test and Population Stability Index (PSI).
-- Prometheus metrics and a Streamlit monitoring dashboard.
+- Prometheus metrics collection and an interactive Streamlit monitoring dashboard.
 - Baseline and deliberately shifted synthetic traffic for testing drift detection.
-- Automated tests for drift calculations and insufficient-data handling.
+- Automated tests for drift calculations, malformed logs, and insufficient-data handling.
 
 ## Architecture
 
@@ -47,7 +47,7 @@ flowchart TD
 | Event logging | JSON Lines (JSONL) |
 | Metrics instrumentation | prometheus-client |
 | Metrics collection | Prometheus |
-| Visualization | Streamlit |
+| Visualization | Streamlit, pandas |
 | Testing | pytest |
 
 ## Project Structure
@@ -70,6 +70,7 @@ SentinelML/
 │   └── reference/
 ├── models/
 ├── logs/
+├── streamlit_app.py
 ├── prometheus.yml
 ├── requirements.txt
 └── .gitignore
@@ -83,16 +84,15 @@ Generated datasets, trained model files, and runtime logs are intentionally excl
 - Python 3.12 or a compatible Python version
 - Git
 - Prometheus for Windows
-- Streamlit for Windows
 
-Prometheus and Streamlit are separate services and must be installed or downloaded separately.
+Streamlit is installed as a Python package through `requirements.txt`. Prometheus must be installed separately.
 
 ## Setup
 
 ### 1. Clone the repository
 
 ```powershell
-git clone https://github.com/aditig-byte/SentinelML
+git clone https://github.com/aditig-byte/SentinelML.git
 cd SentinelML
 ```
 
@@ -103,7 +103,14 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-If PowerShell blocks virtual-environment activation, use the appropriate execution-policy setting for your machine or run the environment's Python executable directly.
+If PowerShell blocks virtual-environment activation, run:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+.\.venv\Scripts\Activate.ps1
+```
+
+Alternatively, run the virtual environment's Python executable directly.
 
 ### 3. Install dependencies
 
@@ -120,11 +127,11 @@ python -m src.training.train
 
 Training generates the synthetic dataset, trained model, model metadata, and reference dataset required by the monitoring pipeline.
 
-Confirm that the files have been created under `data/` and `models/` before continuing.
+Confirm that the expected files have been created under `data/` and `models/` before continuing.
 
 ## Run the API
 
-Start the inference service:
+Start the inference service from the project directory:
 
 ```powershell
 python -m uvicorn src.api.main:app --reload
@@ -145,7 +152,7 @@ Useful endpoints:
 | `/metrics` | Prometheus metrics |
 | `/monitor/status` | Current monitoring status |
 
-Use `http://127.0.0.1:8000/docs` to inspect the request schema and try a prediction.
+Open `http://127.0.0.1:8000/docs` to inspect the request schema and try a prediction.
 
 The prediction request uses these six features:
 
@@ -160,7 +167,7 @@ The response includes the predicted class, label, fraud probability, and inferen
 
 ## Generate Traffic
 
-Keep the API running in its own PowerShell terminal.
+Keep the API running in its own PowerShell terminal. Run traffic-generation commands from another terminal in the project directory, with the virtual environment activated.
 
 ### Baseline traffic
 
@@ -196,7 +203,7 @@ Optional parameters:
 python -m src.monitor.drift_detector --window-size 100 --min-samples 30
 ```
 
-The API also runs the drift analysis periodically and publishes its status as Prometheus metrics.
+The API also runs drift analysis periodically and publishes its status through Prometheus metrics.
 
 ### Data drift
 
@@ -206,15 +213,15 @@ SentinelML compares the reference and current distributions for the six transact
 
 ### Prediction drift
 
-Prediction drift refers to changes in the model's output distribution, such as the distribution of predicted fraud probabilities.
+Prediction drift refers to changes in the model's output distribution, such as changes in the distribution of predicted fraud probabilities.
 
-A prediction distribution change does not, by itself, prove that model accuracy has decreased.
+A change in prediction distribution does not, by itself, prove that model accuracy has decreased.
 
 ### Concept drift
 
 Concept drift refers to a change in the relationship between inputs and outcomes, commonly described as a change in \(P(Y \mid X)\).
 
-SentinelML does not independently establish concept drift because the monitoring pipeline does not receive ongoing ground-truth labels for evaluating that relationship.
+SentinelML does not independently establish concept drift because the monitoring pipeline does not receive ongoing ground-truth labels to evaluate that relationship.
 
 ### Statistical methods
 
@@ -236,6 +243,8 @@ These thresholds are heuristics, not universal guarantees. The KS test and PSI c
 
 The repository includes `prometheus.yml` configured to scrape the local API every five seconds.
 
+Example configuration:
+
 ```yaml
 global:
   scrape_interval: 5s
@@ -247,13 +256,16 @@ scrape_configs:
       - targets: ["127.0.0.1:8000"]
 ```
 
-Start Prometheus from its Windows installation directory:
+Ensure the API is running before starting Prometheus.
+
+For the Windows installation used during development, open a separate PowerShell terminal and run:
 
 ```powershell
-.\prometheus.exe --config.file=prometheus.yml
+cd "C:\tools\prometheus"
+.\prometheus.exe --config.file="C:\tools\prometheus\prometheus.yml"
 ```
 
-Ensure the API is running before starting Prometheus.
+If Prometheus is installed elsewhere, replace the paths with the appropriate locations and ensure the configuration points to the API's `/metrics` endpoint.
 
 Open:
 
@@ -277,24 +289,52 @@ The status gauges use `-1` for unknown or insufficient data, `0` for OK/no drift
 
 ## Streamlit Dashboard
 
-Start Streamlit using the executable from your Windows installation and open:
+SentinelML includes an interactive Streamlit dashboard that queries Prometheus and displays the available monitoring metrics.
 
-`http://localhost:3000`
+Start FastAPI and Prometheus in separate PowerShell terminals first. Then open a third terminal in the project directory, activate the virtual environment, and run:
 
-Configure Prometheus as the data source, using `http://localhost:9090` when Streamlit and Prometheus run on the same machine.
+```powershell
+python -m streamlit run streamlit_app.py
+```
 
-The SentinelML dashboard is designed around eight monitoring panels:
+Open the dashboard at:
 
-1. Fraud vs Legitimate Predictions
-2. Inference Latency
-3. Total Predictions
-4. Prediction Error Rate
-5. Inference Throughput
-6. Feature PSI Comparison
-7. Overall Drift Status
-8. Prediction Drift Status
+`http://localhost:8501`
 
-Dashboard configuration may need to be imported or recreated on a fresh installation. The Streamlit dashboard is not automatically provisioned by the current repository.
+The dashboard queries Prometheus at `http://localhost:9090`. Ensure the Prometheus server is running and the `sentinelml` target is `UP`.
+
+The dashboard includes:
+
+1. **Model Health Overview** — prediction activity and overall, data, and prediction drift status.
+2. **Feature Drift** — feature-level PSI values, drift interpretation, and available history.
+3. **Performance** — inference latency and available error metrics.
+4. **How It Works** — explanations of the monitoring pipeline and key concepts.
+
+Dashboard history depends on the samples retained by Prometheus. Historical charts require sufficient collected samples. The dashboard runs locally and is not automatically deployed to a public hosting service.
+
+## End-to-End Demo
+
+Start FastAPI, Prometheus, and Streamlit in three separate PowerShell terminals.
+
+In a fourth terminal, activate the virtual environment and generate baseline traffic:
+
+```powershell
+cd "C:\Users\Aditi Gupta\SentinelML"
+.\.venv\Scripts\Activate.ps1
+python -m src.monitor.generate_traffic --mode baseline --count 100
+```
+
+Inspect the dashboard at `http://localhost:8501`.
+
+Then generate deliberately shifted traffic:
+
+```powershell
+python -m src.monitor.generate_traffic --mode drift --count 100
+```
+
+Refresh the dashboard and inspect the Feature Drift and Model Health Overview pages.
+
+Drift status depends on the configured analysis interval and minimum sample requirements. Allow sufficient time for the API to analyze new events and for Prometheus to scrape updated metrics.
 
 ## Automated Tests
 
@@ -311,10 +351,10 @@ The tests cover PSI calculations, large distribution shifts, invalid samples, ma
 - The fraud dataset and labels are synthetic and do not establish real-world fraud detection performance.
 - Input drift and prediction drift are not proof of reduced model accuracy.
 - Concept drift cannot be confirmed without suitable ground-truth outcome data.
-- Inference events are currently stored in a local JSONL file rather than Kafka.
+- Inference events are stored in a local JSONL file rather than Kafka.
 - Runtime logs and model artifacts are excluded from Git and must be regenerated or supplied locally.
 - Prometheus stores its own time-series data; monitoring history and counters may reset or be lost depending on local configuration and restarts.
-- The drift detector currently runs as a periodic background task in the API process.
+- The drift detector runs as a periodic background task in the API process.
 - Production deployment would require durable event storage, suitable metric ingestion, access controls, and operational alerting.
 
 ## Future Improvements
@@ -328,4 +368,4 @@ The tests cover PSI calculations, large distribution shifts, invalid samples, ma
 
 ## Disclaimer
 
-SentinelML is an educational MLOps and observability project built using synthetic transaction data. It is intended to demonstrate model-serving and monitoring techniques, not to provide production-ready financial fraud decisions.
+SentinelML is an educational MLOps and observability project built using synthetic transaction data. It demonstrates model-serving and monitoring techniques and is not intended to provide production-ready financial fraud decisions.
